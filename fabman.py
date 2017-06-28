@@ -7,21 +7,20 @@ from octoprint.users import FilebasedUserManager, User
 
 __version__ = '1.0.0'
 __author__ = 'Matej Buday <m.buday@o0.sk>'
-__url__
+__url__ = 'https://github.com/rplnt/octoprint-fabman-auth'
 
 
 class FabmanUser(User):
-    '''
-    Clone of User class used for type checking.
-    '''
+    '''Clone of User class used for type checking.'''
     def __init__(self, username):
         User.__init__(self, username, None, True, ['user'])
 
 
 class FabmanUserManager(FilebasedUserManager):
     '''
-    UserManager class that can authenticate users using Fabman service with fallback to local files.
+    UserManager class that can authenticate Octoprint users using Fabman.
 
+    Allows for using local users alongside it.
     '''
     ACCEPT_HEADER = {'Accept': 'application/json'}
     FABMAN_API_URL = 'https://fabman.io/api/v1'
