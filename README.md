@@ -16,7 +16,7 @@ accessControl:
   # Config section specific to our FabmanUserManager.
   fabman:
     
-    # Allow login for local users (tried first before talking to Fabman).
+    # Allow login for local users (tried first before talking to FM).
     # default: false
     allowLocalUsers: true
     
@@ -27,6 +27,13 @@ accessControl:
     # Url of the Fabman API.
     # default: https://fabman.io/api/v1/
     url: https://fabman.io/api/v1/
+
+    # Only give rights to users who have resource with id specified in resourceIds
+    # default: false
+    restrictAccess: true
+
+    # List of Fabman resource ids this instance handles; only users with access to *any* of these ids will get 'user' role
+    resourceIds: [1, 2, 3]
 ```
 
 ## Issues

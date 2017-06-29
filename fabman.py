@@ -11,9 +11,26 @@ __url__ = 'https://github.com/rplnt/octoprint-fabman-auth'
 
 
 class FabmanUser(User):
-    '''Clone of User class used for type checking.'''
+    '''
+    User class storing Fabman extras.
+    '''
     def __init__(self, username):
-        User.__init__(self, username, None, True, ['user'])
+        User.__init__(self, username, None, True, [])
+        self.fabman_user_id = None
+        self.fabman_cookie = None
+
+    def set_fabman_data(self, user_id, cookie):
+        self.fabman_user_id = user_id
+        self.fabman_cookie = cookie
+
+    def get_fabman_id(self):
+        return self.fabman_user_id
+
+    def get_fabman_auth_cookie(self):
+        return self.fabman_cookie
+
+    def add_role(self, role):
+        self._roles.append(role)
 
 
 class FabmanUserManager(FilebasedUserManager):
@@ -25,16 +42,20 @@ class FabmanUserManager(FilebasedUserManager):
     ACCEPT_HEADER = {'Accept': 'application/json'}
     FABMAN_API_URL = 'https://fabman.io/api/v1'
     API_LOGIN_PATH = '/user/login'
+    API_RESOURCES_PATH = '/members/{id}/resource-permissions'
     OK_CODES = [200]
 
     def __init__(self):
         FilebasedUserManager.__init__(self)
 
         self.url = (settings().get(['accessControl', 'fabman', 'url']) or self.FABMAN_API_URL).rstrip('/')
-        self.enabled = settings().getBoolean(['accessControl', 'fabman', 'enabled']) or False
+        self.fabman_enabled = settings().getBoolean(['accessControl', 'fabman', 'enabled']) or False
         self.local_enabled = settings().getBoolean(['accessControl', 'fabman', 'allowLocalUsers']) or False
+        self.restrict_access = settings().getBoolean(['accessControl', 'fabman', 'restrictAccess']) or False
+        self.resource_set = set(settings().get(['accessControl', 'fabman', 'resourceIds']) or [])
 
-        self._cookies = {}
+        # { username: (id, cookie) }
+        self.fabman_users = {}
 
     def _fabman_auth(self, mail, password):
         '''Call Fabman API to log in.'''
@@ -54,11 +75,47 @@ class FabmanUserManager(FilebasedUserManager):
 
         # only auth active users
         if data['state'] == 'active':
-            # _cookies[mail] = r.cookies
-            self._logger.info('Authenticated user Fabman user {}'.format(mail))
+            # using only id from the first member, whatever that means
+            try:
+                user_id = data['members'][0]['id']
+            except (KeyError, TypeError, IndexError):
+                user_id = None
+
+            self.fabman_users[mail] = (user_id, r.cookies)
+            self._logger.info('Authenticated Fabman user "{}"'.format(mail))
             return True
 
+        self._logger.info('Fabman user "{}" NOT authenticated'.format(mail))
         return False
+
+    def _fabman_get_resources(self, user_id, auth_cookie):
+        '''Return set of resources given user has permission to on Fabman'''
+        r = requests.get((self.url + self.API_RESOURCES_PATH).format(id=user_id), headers=self.ACCEPT_HEADER, cookies=auth_cookie)
+
+        if r.status_code not in self.OK_CODES:
+            self._logger.error('Could not load user ({}) resources with error code {}'.format(user_id, r.status_code))
+            return set()
+
+        try:
+            data = r.json()
+        except ValueError:
+            self._logger.error('Failed to parse Fabman response with resources for user id'.format(user_id))
+            return set()
+
+        resource_ids = []
+        for resource in data:
+            if 'resource' in resource:
+                resource_ids.append(resource['resource'])
+
+        self._logger.info('Loaded available resources for user id "{}"'.format(user_id))
+        return set(resource_ids)
+
+    def _fabman_has_permission(self, user):
+        user_id = user.get_fabman_id()
+        auth_cookie = user.get_fabman_auth_cookie()
+        if not user_id or not auth_cookie:
+            return False
+        return bool(self.resource_set & self._fabman_get_resources(user_id, auth_cookie))
 
     def findUser(self, userid, apikey=None, session=None):
         '''
@@ -73,7 +130,7 @@ class FabmanUserManager(FilebasedUserManager):
             if user is not None:
                 return user
 
-        if not self.enabled:
+        if not self.fabman_enabled:
             return None
 
         return FabmanUser(userid)
@@ -84,16 +141,23 @@ class FabmanUserManager(FilebasedUserManager):
             if user is not None and not isinstance(user, FabmanUser):
                 return FilebasedUserManager.checkPassword(self, username, password)
 
-        if not self.enabled:
+        if not self.fabman_enabled:
             return False
 
-        # call fabman API to login
         return self._fabman_auth(username, password)
 
     def login_user(self, user):
         if isinstance(user, FabmanUser):
-            # add any saved data to our user class for use in other places
-            pass
+            username = user.get_name()
+
+            # store cookie and id we got during auth inside user class
+            if username in self.fabman_users:
+                user.set_fabman_data(*self.fabman_users[username])
+
+            # check if we have permission to use resources controlled by this OctoPrint instance
+            if not self.restrict_access or self._fabman_has_permission(user):
+                self._logger.info('Elevating user {} to role "user"'.format(username))
+                user.add_role('user')
 
         return super(FabmanUserManager, self).login_user(user)
 
