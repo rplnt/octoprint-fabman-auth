@@ -2,8 +2,12 @@
 Authenticate [OctoPrint](http://octoprint.org/) users using [Fabman](https://fabman.io/) service.
 
 ## Installation
-1. Copy `fabman.py` to `/src/octoprint` in your OctoPrint installation.
-2. Adjust `config.yaml` to use it, see section **Config**
+1. Clone this repository into `plugins` directory inside your OctoPrint *install* folder
+    ```
+    cd {OctoPrint}/src/octoprint/plugins
+    git clone https://github.com/rplnt/octoprint-fabman-auth
+    ```
+2. Adjust `config.yaml`, see section **Config**
 
 ## Config
 
@@ -11,7 +15,8 @@ Authenticate [OctoPrint](http://octoprint.org/) users using [Fabman](https://fab
 accessControl:
 
   # Change userManager to point to our FabmanUserManager class
-  userManager: octoprint.fabman.FabmanUserManager
+  # default: OctoPrint's default manager using local users.yaml file
+  userManager: octoprint.plugins.octoprint-fabman-auth.FabmanUserManager
   
   # Config section specific to our FabmanUserManager.
   fabman:
@@ -32,13 +37,15 @@ accessControl:
     # default: false
     restrictAccess: true
 
-    # List of Fabman resource ids this instance handles; only users with access to *any* of these ids will get 'user' role
+    # List of Fabman resource ids this instance handles
+    # Only users with permission to *any* of these ids will get 'user' role when restrictAccess is enabled
+    # default: []
     resourceIds: [1, 2, 3]
 ```
 
 ## Issues
 * UI doesn't distinguish between regular or Fabman users - change pass and other forms are present and non-functional
-* All Fabman users have only user roles in OctoPrint
+* Only first "member" of Fabman user is used for permission management
 * Local users can't (shouldn't have) same usernames as Fabman users
 
 ## Notes
