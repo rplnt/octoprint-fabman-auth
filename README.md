@@ -38,7 +38,7 @@ accessControl:
     restrictAccess: true
 
     # List of Fabman resource ids this instance handles
-    # Only users with permission to *any* of these ids will get 'user' role when restrictAccess is enabled
+    # Only users that are trained on *any* of these ids will get 'user' role when restrictAccess is enabled
     # default: []
     resourceIds: [1, 2, 3]
 ```
@@ -46,7 +46,7 @@ accessControl:
 ## Issues
 * UI doesn't distinguish between regular or Fabman users - change pass and other forms are present and non-functional
 * Only first "member" of Fabman user is used for permission management
-* Local users can't (shouldn't have) same usernames as Fabman users
+* Local users can't (shouldn't) have same usernames as Fabman users
 
 ## Notes
 Tested on OctoPrint version 1.3, provided as-is without any guarantee.

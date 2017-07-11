@@ -42,7 +42,7 @@ class FabmanUserManager(FilebasedUserManager):
     ACCEPT_HEADER = {'Accept': 'application/json'}
     FABMAN_API_URL = 'https://fabman.io/api/v1'
     API_LOGIN_PATH = '/user/login'
-    API_RESOURCES_PATH = '/members/{id}/resource-permissions'
+    API_RESOURCES_PATH = '/members/{id}/trained-resources'
     OK_CODES = [200]
 
     def __init__(self):
@@ -89,7 +89,7 @@ class FabmanUserManager(FilebasedUserManager):
         return False
 
     def _fabman_get_resources(self, user_id, auth_cookie):
-        '''Return set of resources given user has permission to on Fabman'''
+        '''Return set of resources given user is "trained on" on Fabman'''
         r = requests.get((self.url + self.API_RESOURCES_PATH).format(id=user_id), headers=self.ACCEPT_HEADER, cookies=auth_cookie)
 
         if r.status_code not in self.OK_CODES:
@@ -97,15 +97,10 @@ class FabmanUserManager(FilebasedUserManager):
             return set()
 
         try:
-            data = r.json()
+            resource_ids = r.json()
         except ValueError:
             self._logger.error('Failed to parse Fabman response with resources for user id'.format(user_id))
             return set()
-
-        resource_ids = []
-        for resource in data:
-            if 'resource' in resource:
-                resource_ids.append(resource['resource'])
 
         self._logger.info('Loaded available resources for user id "{}"'.format(user_id))
         return set(resource_ids)
