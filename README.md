@@ -39,6 +39,8 @@ accessControl:
     url: https://fabman.io/api/v1/
 
     # Fabman account ID - which account user's membership belongs to
+    # You can get your account ID by either fetching the list of accounts you have access to (https://fabman.io/api/v1/documentation#!/accounts/getAccounts)
+    # or by looking at the URL of your Fabman webapp (https://fabman.io/manage/<accountId>/)
     # Used API: "/accounts/{id}"
     # default: None
     accountId: ~
