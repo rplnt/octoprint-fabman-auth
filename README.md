@@ -39,12 +39,12 @@ accessControl:
     url: https://fabman.io/api/v1/
 
     # Fabman account ID - which account user's membership belongs to
-    # [GET /accounts/{id}](https://fabman.io/api/v1/documentation#!/accounts/getAccountsId)
+    # Used API: "/accounts/{id}"
     # default: None
     accountId: ~
 
     # Only give rights to users are trained for specific resourceIds
-    # Used API: [/members/{id}/trained-resources](https://fabman.io/api/v1/documentation#!/members/getMembersIdTrainedresources)
+    # Used API: "/members/{id}/trained-resources"
     # default: false
     restrictAccess: true
 
