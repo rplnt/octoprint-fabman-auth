@@ -51,6 +51,7 @@ class FabmanUserManager(FilebasedUserManager):
         self.url = (settings().get(['accessControl', 'fabman', 'url']) or self.FABMAN_API_URL).rstrip('/')
         self.fabman_enabled = settings().getBoolean(['accessControl', 'fabman', 'enabled']) or False
         self.local_enabled = settings().getBoolean(['accessControl', 'fabman', 'allowLocalUsers']) or False
+        self.fabman_account = settings().getInt(['accessControl', 'fabman', 'accountId'])
         self.restrict_access = settings().getBoolean(['accessControl', 'fabman', 'restrictAccess']) or False
         self.resource_set = set(settings().get(['accessControl', 'fabman', 'resourceIds']) or [])
 
@@ -74,19 +75,23 @@ class FabmanUserManager(FilebasedUserManager):
             return False
 
         # only auth active users
-        if data['state'] == 'active':
-            # using only id from the first member, whatever that means
-            try:
-                user_id = data['members'][0]['id']
-            except (KeyError, TypeError, IndexError):
-                user_id = None
+        if data.get('state') != 'active':
+            self._logger.info('Fabman user "{}" not active'.format(mail))
+            return False
 
-            self.fabman_users[mail] = (user_id, r.cookies)
-            self._logger.info('Authenticated Fabman user "{}"'.format(mail))
-            return True
+        # select member matching the configured account
+        for member in data.get('members', []):
+            account = member.get('account')
+            if account is not None and account == self.fabman_account:
+                user_id = member.get('id')
+                break
+        else:
+            self._logger.info('Fabman user "{}" does not belong to account "{}"'.format(mail, self.fabman_account))
+            return False
 
-        self._logger.info('Fabman user "{}" NOT authenticated'.format(mail))
-        return False
+        self.fabman_users[mail] = (user_id, r.cookies)
+        self._logger.info('Authenticated Fabman user "{}"'.format(mail))
+        return True
 
     def _fabman_get_resources(self, user_id, auth_cookie):
         '''Return set of resources given user is "trained on" on Fabman'''
